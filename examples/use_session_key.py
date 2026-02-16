@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-示例脚本：如何使用已保存的SessionKey访问Claude AI
+Example script: How to access Claude AI using a saved SessionKey
 """
 
 import requests
@@ -10,36 +10,36 @@ import json
 import os
 import sys
 
-# 添加项目根目录到系统路径
+# Add the project root directory to the system path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def read_session_key(file_path):
-    """读取保存的SessionKey"""
+    """Read the saved SessionKey"""
     try:
         with open(file_path, 'r') as file:
             return file.read().strip()
     except FileNotFoundError:
-        print(f"错误: 找不到文件 {file_path}")
+        print(f"Error: file {file_path} not found")
         return None
 
 
 def send_message_to_claude(session_key, message, conversation_id=None):
     """
-    使用SessionKey向Claude发送消息
+    Send a message to Claude using SessionKey
     
     Args:
         session_key: Claude的SessionKey
-        message: 要发送的消息内容
-        conversation_id: 可选，现有会话ID
+        message: The message content to be sent
+        conversation_id: Optional, existing session ID
         
     Returns:
-        响应JSON或错误信息
+        Response JSON or error message
     """
-    # API端点
+    # API endpoint
     base_url = "https://claude.ai/api"
     
-    # 设置请求头
+    # Set request headers
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
@@ -47,19 +47,19 @@ def send_message_to_claude(session_key, message, conversation_id=None):
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
     }
     
-    # 创建新会话（如果未提供会话ID）
+    # Create a new session (if no session ID is provided)
     if not conversation_id:
         try:
-            # 获取组织ID
+            # Get Organization ID
             org_response = requests.get(f"{base_url}/organizations", headers=headers)
             org_response.raise_for_status()
             org_data = org_response.json()
             if len(org_data) == 0:
-                return {"error": "无法获取组织ID"}
+                return {"error": "Unable to retrieve organization ID"}
             
             organization_id = org_data[0]["uuid"]
             
-            # 创建新会话
+            # Create a new session
             create_data = {
                 "name": "",
                 "organization_id": organization_id
@@ -73,9 +73,9 @@ def send_message_to_claude(session_key, message, conversation_id=None):
             conversation_id = create_response.json()["uuid"]
             
         except requests.RequestException as e:
-            return {"error": f"创建会话失败: {str(e)}"}
+            return {"error": f"Session creation failed: {str(e)}"}
     
-    # 发送消息
+    # Send message
     try:
         message_data = {
             "attachments": [],
@@ -97,20 +97,20 @@ def send_message_to_claude(session_key, message, conversation_id=None):
         )
         message_response.raise_for_status()
         
-        # 读取流式响应
+        # Read streaming response
         full_response = ""
         for line in message_response.iter_lines():
             if line:
                 try:
                     decoded_line = line.decode('utf-8')
                     if decoded_line.startswith("data: "):
-                        json_str = decoded_line[6:]  # 去除 "data: " 前缀
+                        json_str = decoded_line[6:] # Remove the "data: " prefix
                         if json_str != "[DONE]":
                             chunk = json.loads(json_str)
                             if "completion" in chunk:
                                 full_response += chunk["completion"]
                 except Exception as e:
-                    print(f"解析响应出错: {e}")
+                    print(f"Error parsing response: {e}")
         
         return {
             "conversation_id": conversation_id,
@@ -118,35 +118,35 @@ def send_message_to_claude(session_key, message, conversation_id=None):
         }
         
     except requests.RequestException as e:
-        return {"error": f"发送消息失败: {str(e)}"}
+        return {"error": f"Message sending failed: {str(e)}"}
 
 
 def main():
-    # 读取SessionKey
-    session_key_file = "../sessionKey.txt"  # 根据实际情况调整路径
+    # Read SessionKey
+    session_key_file = "../sessionKey.txt" # Adjust the path according to the actual situation
     session_key = read_session_key(session_key_file)
     
     if not session_key:
-        print("无法读取SessionKey，请先运行注册程序生成SessionKey")
+        print("Unable to read SessionKey. Please run the registration program to generate SessionKey first.")
         return
     
-    print("成功读取SessionKey!")
+    print("SessionKey successfully read!")
     
-    # 发送消息示例
-    message = "你好，Claude! 请简单介绍一下你自己。"
-    print(f"\n发送消息: '{message}'")
+    # Example of sending a message
+    message = "Hello, Claude! Please briefly introduce yourself."
+    print(f"\nSent message: '{message}'")
     
     result = send_message_to_claude(session_key, message)
     
     if "error" in result:
-        print(f"错误: {result['error']}")
+        print(f"Error: {result['error']}")
     else:
-        print("\nClaude的回复:")
+        print("\nClaude's reply:")
         print("="*50)
         print(result["response"])
         print("="*50)
-        print(f"\n会话ID: {result['conversation_id']}")
-        print("\n你可以使用此会话ID继续对话")
+        print(f"\nSession ID: {result['conversation_id']}")
+        print("\nYou can use this session ID to continue the conversation")
 
 
 if __name__ == "__main__":
